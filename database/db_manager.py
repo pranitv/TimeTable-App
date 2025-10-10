@@ -16,16 +16,17 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         day TEXT NOT NULL,
         time TEXT NOT NULL,
-        task TEXT NOT NULL           
+        task TEXT NOT NULL,
+        status TeXT DEFAULT 'pending'           
         )
     """)
     conn.commit()
     conn.close()
 
-def add_task(day, time, task):
+def add_task(day, time, task, status):
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO timetable (day, time, task) VALUES (?, ?, ?)", (day, time, task))
+    cursor.execute("INSERT INTO timetable (day, time, task, status) VALUES (?, ?, ?, ?)", (day, time, task, status))
     conn.commit()
     conn.close()
 
@@ -41,5 +42,12 @@ def delete_task(task_id):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM timetable WHERE id = ?", (task_id,))
+    conn.commit()
+    conn.close()
+
+def update_task(task_id, day, time, task, status):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE timetable SET day = ?, time = ?, task = ?, status = ? WHERE id = ?", (day, time, task, status, task_id))
     conn.commit()
     conn.close()

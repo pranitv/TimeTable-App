@@ -7,7 +7,7 @@ class MainWindow(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("Weekly Timetable")
-        self.geometry("700x500")
+        self.geometry("800x600")
         ctk.set_appearance_mode("system")
         ctk.set_default_color_theme("blue")
 
