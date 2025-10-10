@@ -1,5 +1,6 @@
 import sqlite3
 import os
+from datetime import datetime
 
 DB_PATH = os.path.join(os.path.dirname(__file__),"../data/timetable.db")
 
@@ -51,3 +52,25 @@ def update_task(task_id, day, time, task, status):
     cursor.execute("UPDATE timetable SET day = ?, time = ?, task = ?, status = ? WHERE id = ?", (day, time, task, status, task_id))
     conn.commit()
     conn.close()
+
+def get_today_tasks():
+    today = datetime.now().strftime("%A")
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM timetable WHERE day = ? ORDER BY time", (today,))
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+def get_tasks_grouped_by_day():
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM timetable ORDER BY time asc")
+    rows = cursor.fetchall()
+    conn.close()
+
+    days = {}
+    for row in rows:
+        id, day, time, task, status = row
+        days.setdefault(day,[]).append((id, time, task, status))
+    return days
