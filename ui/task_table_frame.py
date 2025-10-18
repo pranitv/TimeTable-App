@@ -1,10 +1,11 @@
 import customtkinter as ctk
 from datetime import datetime
-from database.db_manager import get_today_tasks, update_task, delete_task, get_tasks_grouped_by_day
+from database.db_manager import get_today_tasks, update_task, delete_task, get_tasks_grouped_by_day, get_subtasks, add_subtask
 
 class TaskTableFrame(ctk.CTkFrame):
     def __init__(self, master):
         super().__init__(master)
+        self._row_originals = {}
         self.refresh_table()
 
     def refresh_table(self):
@@ -55,39 +56,81 @@ class TaskTableFrame(ctk.CTkFrame):
             self.create_row(row_index, task, target_day)
 
     def create_row(self, row_index, task, day):
-        task_id, time_val, task_val, status_val = task
+        task_id, time_val, task_val, status_val, priority_val, notes_val, recurrence_val  = task
+
+        rk = task_id
+        self._row_originals[task_id] = {
+            "day": day,
+            "time": time_val,
+            "task": task_val,
+            "status": status_val,
+            "priority": priority_val,
+            "notes": notes_val,
+            "recurrence": recurrence_val
+        }
         
         # Editable fields
         day_entry = ctk.CTkEntry(self, width=100)
         day_entry.insert(0, day)
+        day_entry.configure(state='readonly')
         day_entry.grid(row=row_index, column=0, padx=5, pady=5)
 
         time_entry = ctk.CTkEntry(self, width=100)
         time_entry.insert(0, time_val)
+        time_entry.configure(state='readonly')
         time_entry.grid(row=row_index, column=1, padx=5, pady=5)
 
         task_entry = ctk.CTkEntry(self, width=200)
         task_entry.insert(0, task_val)
+        task_entry.configure(state='readonly')
         task_entry.grid(row=row_index, column=2, padx=5, pady=5)
 
         status_Dropdown = ctk.CTkComboBox(self, values=["Pending","In Progress","Completed"], width=120)
         status_Dropdown.set(status_val)
+        status_Dropdown.configure(state='disabled')
         status_Dropdown.grid(row=row_index, column=3, padx=5, pady=5)
+
+        priority_Dropdown = ctk.CTkComboBox(self, values=["Low","Medium","High"], width=100)
+        priority_Dropdown.set(priority_val)  # default value
+        priority_Dropdown.configure(state='disabled')
+        priority_Dropdown.grid(row=row_index, column=4, padx=5, pady=5)
+
+        notes_entry = ctk.CTkEntry(self, width=200)
+        notes_entry.insert(0, notes_val)
+        notes_entry.configure(state='readonly')
+        notes_entry.grid(row=row_index, column=5, padx=5, pady=5)
+
+        recurrence_Dropdown = ctk.CTkComboBox(self, values=["None","Daily","Weekly","Monthly"], width=120)
+        recurrence_Dropdown.set(recurrence_val if recurrence_val else "None")  # default value
+        recurrence_Dropdown.configure(state='disabled')
+        recurrence_Dropdown.grid(row=row_index, column=6, padx=5, pady=5)
 
         # Frame for action buttons
         action_frame = ctk.CTkFrame(self)
-        action_frame.grid(row=row_index, column=4, padx=5, pady=5)
+        action_frame.grid(row=row_index, column=7, padx=5, pady=5)
 
         # Update button
         update_button = ctk.CTkButton(
             action_frame, 
             text="Update", 
-            width=70,
+            width=50,
+            state='disabled',
             command=lambda: self._update_task(
-                task_id, day_entry, time_entry, task_entry, status_Dropdown
+                task_id, day_entry, time_entry, task_entry, status_Dropdown, priority_Dropdown, notes_entry, recurrence_Dropdown
             ))
         
         update_button.pack(side='left', padx=4)
+
+        # edit button
+        edit_button = ctk.CTkButton(
+            action_frame,
+            text='Edit',
+            width=50,
+            command=lambda: self._enable_edit(rk,
+                [day_entry, time_entry, task_entry, status_Dropdown, priority_Dropdown, notes_entry, recurrence_Dropdown], update_button
+            )
+        )
+        edit_button.pack(side='left', padx=4)
 
         # Delete button
         delete_button = ctk.CTkButton(
@@ -99,14 +142,121 @@ class TaskTableFrame(ctk.CTkFrame):
         
         delete_button.pack(side='left', padx=4)
 
+        # add subtask button
+        subtask_button = ctk.CTkButton(
+            action_frame,
+            text="+",
+            width=10, 
+            fg_color="#3b82f6",
+            command=lambda: self._open_subtask_window(task_id, day)
+        )
+        subtask_button.pack(side='left', padx=3)
+
+        subtasks = get_subtasks(task_id)
+
+        for sub_index, subtask in enumerate(subtasks, start=1):
+            self.create_subtask_row(row_index + sub_index, subtask)
+
+    def create_subtask_row(self, row_index, subtask):
+        """Render subtasks slightly indented and smaller font"""
+        indent_label = ctk.CTkLabel(self, text="↳", font=("Arial", 14))
+        indent_label.grid(row=row_index, column=0, padx=(30,0), pady=3, sticky='w')
+
+        time_label = ctk.CTkLabel(self, text=subtask["time"], font=("Arial", 10))
+        time_label.grid(row=row_index, column=1, padx=5, pady=3, sticky='w')
+
+        task_label = ctk.CTkLabel(self, text=subtask["task"], font=("Arial", 10))
+        task_label.grid(row=row_index, column=2, padx=5, pady=3, sticky='w')
+
+        status_label = ctk.CTkLabel(self, text=subtask["status"], font=("Arial", 10))
+        status_label.grid(row=row_index, column=3, padx=5, pady=3, sticky='w')
+
+        priority_label = ctk.CTkLabel(self, text=subtask["priority"], font=("Arial", 10))
+        priority_label.grid(row=row_index, column=4, padx=5, pady=3, sticky='w')
+
+        notes_label = ctk.CTkLabel(self, text=subtask["notes"], font=("Arial", 10))
+        notes_label.grid(row=row_index, column=5, padx=5, pady=3, sticky='w')
+
+        recurrence_label = ctk.CTkLabel(self, text=subtask["recurrence"], font=("Arial", 10))
+        recurrence_label.grid(row=row_index, column=6, padx=5, pady=3, sticky='w') 
+
     def _delete_task(self,task_id):
         delete_task(task_id)
         self.refresh_table()
 
-    def _update_task(self, task_id, day, time_entry, task_entry, status_dropdown):
-        time = time_entry.get()
-        task = task_entry.get()
-        status = status_dropdown.get()
+    def _update_task(self, task_id, day_entry, time_entry, task_entry, status_dropdown, priority_dropdown, notes_entry, recurrence_Dropdown):
+        # Extract text/value from widgets (entry/combo)
+        day = day_entry.get() if hasattr(day_entry, "get") else day_entry
+        time = time_entry.get() if hasattr(time_entry, "get") else time_entry
+        task = task_entry.get() if hasattr(task_entry, "get") else task_entry
+        status = status_dropdown.get() if hasattr(status_dropdown, "get") else status_dropdown
+        priority = priority_dropdown.get() if hasattr(priority_dropdown, "get") else priority_dropdown
+        notes = notes_entry.get() if hasattr(notes_entry, "get") else notes_entry
+        recurrence = recurrence_Dropdown.get() if hasattr(recurrence_Dropdown, "get") else recurrence_Dropdown
+
+        # Only proceed if required fields have values
         if day and time and task:
-            update_task(task_id, day, time, task, status)
+            update_task(task_id, day, time, task, status, priority, notes, recurrence)
             self.refresh_table()
+    
+    def _enable_edit(self, rk, entries, update_button):
+        for widget in entries:
+            if isinstance(widget, ctk.CTkEntry):
+                widget.configure(state='normal')
+            else:
+                widget.configure(state='normal')
+        
+        update_button.configure(state='normal')
+
+    def _open_subtask_window(self, parent_id, day):
+        """Open a small popup to create a new subtask."""
+        popup = ctk.CTkToplevel(self)
+        popup.title("Add Subtask")
+        popup.geometry("300x500")
+
+        # keep popup above main window
+        popup.transient(self.winfo_toplevel())
+        popup.grab_set()
+        popup.focus_force()
+
+        ctk.CTkLabel(popup, text="Time:").pack(pady=5)
+        time_entry = ctk.CTkEntry(popup)
+        time_entry.pack(pady=5)
+
+        ctk.CTkLabel(popup, text="Task:").pack(pady=5)
+        task_entry = ctk.CTkEntry(popup)
+        task_entry.pack(pady=5)
+
+        ctk.CTkLabel(popup, text="Status:").pack(pady=5)
+        status_dropdown = ctk.CTkComboBox(popup, values=["Pending", "In Progress", "Completed"])
+        status_dropdown.pack(pady=5)
+
+        ctk.CTkLabel(popup, text="Priority:").pack(pady=5)
+        priority_dropdown = ctk.CTkComboBox(popup, values=["Low", "Medium", "High"])
+        priority_dropdown.pack(pady=5)
+
+        ctk.CTkLabel(popup, text="Notes:").pack(pady=5)
+        notes_entry = ctk.CTkEntry(popup)
+        notes_entry.pack(pady=5)
+
+        ctk.CTkLabel(popup, text="Recurrence:").pack(pady=5)
+        recurrence_dropdown = ctk.CTkComboBox(popup, values=["None", "Daily", "Weekly", "Monthly"])
+        recurrence_dropdown.pack(pady=5)
+
+
+        def save_subtask():
+            time = time_entry.get().strip()
+            task = task_entry.get().strip()
+            status = status_dropdown.get().strip()
+            priority = priority_dropdown.get().strip()
+            notes = notes_entry.get().strip()
+            recurrence = recurrence_dropdown.get().strip()
+
+            if not time or not task:
+                return
+            add_subtask(parent_id, day, time, task, status, priority, notes, recurrence)
+            popup.destroy()
+            self.refresh_table()
+
+        save_button = ctk.CTkButton(popup, text="Add Subtask", command=save_subtask)
+        save_button.pack(pady=15)

@@ -36,6 +36,20 @@ class AddTaskFrame(ctk.CTkFrame):
         self.status_dropdown.set("Pending")  # default value
         self.status_dropdown.pack(side='left', padx=5, pady=5)
 
+        # dropdown for priority
+        self.priority_dropdown = ctk.CTkComboBox(self, values=["Low","Medium","High"])
+        self.priority_dropdown.set("Low")  # default value
+        self.priority_dropdown.pack(side='left', padx=5, pady=5)
+
+        # add notes field
+        self.notes_entry = ctk.CTkEntry(self, placeholder_text="Notes")
+        self.notes_entry.pack(side='left', padx=5, pady=5)
+
+        # recurrence dropdown
+        self.recurrence_dropdown = ctk.CTkComboBox(self, values=["None","Daily","Weekly","Monthly"])
+        self.recurrence_dropdown.set("None")  # default value
+        self.recurrence_dropdown.pack(side='left', padx=5, pady=5)
+
         self.add_button = ctk.CTkButton(self, text="Add Task", command=self.add_task)
         self.add_button.pack(side='left', padx=10)
 
@@ -83,11 +97,20 @@ class AddTaskFrame(ctk.CTkFrame):
         time = self.time_var.get()
         task = self.task_entry.get()
         status = self.status_dropdown.get()
+        priority = self.priority_dropdown.get()
+        notes = self.notes_entry.get()
+        recurrence = self.recurrence_dropdown.get()
+        if recurrence == "None":
+            recurrence = None
+        parent_id = None  # For simplicity, not handling parent tasks here
 
         if day and time and task:
-            add_task(day, time, task, status)
+            add_task(day, time, task, status, priority, notes, recurrence, parent_id)
             self.refresh_callback()
             self.day_entry.set(datetime.now().strftime("%A"))
             self.time_var.set('')
             self.task_entry.delete(0, 'end')
-            self.status_dropdown.set("Pending")  # reset to default
+            self.status_dropdown.set("Pending")
+            self.priority_dropdown.set("Low")
+            self.notes_entry.delete(0, 'end')
+            self.recurrence_dropdown.set("None")
