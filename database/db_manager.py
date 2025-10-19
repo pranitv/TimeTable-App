@@ -1,11 +1,20 @@
 import sqlite3
 import os
+import sys
 from datetime import datetime
 
-DB_PATH = os.path.join(os.path.dirname(__file__),"../data/timetable.db")
+# DB_PATH = os.path.join(os.path.dirname(__file__),"../data/timetable.db")
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 def get_connection():
-    conn = sqlite3.connect(DB_PATH)
+    db_path = resource_path("./data/timetable.db")
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -69,7 +78,7 @@ def get_today_tasks():
 def get_tasks_grouped_by_day():
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, day, time, task, status, priority, notes, recurrence FROM timetable ORDER BY time asc")
+    cursor.execute("SELECT id, day, time, task, status, priority, notes, recurrence FROM timetable where parent_id is null ORDER BY time asc")
     rows = cursor.fetchall()
     conn.close()
 
@@ -96,4 +105,4 @@ def get_subtasks(parent_id):
     """,(parent_id,))
     rows = cursor.fetchall()
     conn.close()
-    return [{"id":r[0], "day":r[1], "time": r[2], "task":r[3], "status":r[4], "priority":r[5], "notes":r[6], "recurrence":r[7]} for r in rows]
+    return [(r[0], r[2], r[3], r[4], r[5], r[6], r[7]) for r in rows]
