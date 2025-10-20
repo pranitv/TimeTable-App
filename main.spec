@@ -5,7 +5,7 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('data/timetable.db', 'data')],
+    datas=[('database/timetable.db', 'database')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
