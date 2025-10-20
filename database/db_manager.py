@@ -106,3 +106,31 @@ def get_subtasks(parent_id):
     rows = cursor.fetchall()
     conn.close()
     return [(r[0], r[2], r[3], r[4], r[5], r[6], r[7]) for r in rows]
+
+def replicate_daily_tasks_to_weekdays():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    weekdays = ['Monday','Tuesday','Wednesday','Thursday','Friday']
+
+    # fetch all daily tasks
+    cursor.execute("select time, task, status, priority, notes, recurrence from timetable where recurrence='Daily'")
+
+    daily_tasks = cursor.fetchall()
+
+    for day in weekdays:
+        for time, task, status, priority, notes, recurrence in daily_tasks:
+            # check if the task already exists for the day to avoid duplicates
+            cursor.execute("""
+                    SELECT COUNT(*) FROM timetable
+                    where day = ? and time = ? and task = ? and recurrence = 'Daily'
+            """, (day, time, task))
+            count = cursor.fetchone()[0]
+
+            if count == 0:
+                cursor.execute("""
+                    INSERT INTO timetable (day, time, task, status, priority, notes, recurrence)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (day, time, task, status, priority, notes, recurrence))
+    conn.commit()
+    conn.close()
